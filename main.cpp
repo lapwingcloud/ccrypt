@@ -10,7 +10,8 @@ void test();
 
 int main()
 {
-    test();
+    // test();
+    cout << AES::encrypt("alsdjalskdjalskdjalksdjalksjdlaksjdqwejbqwqeqweqweqwescvfv]'f[pb]bl]-30=13-rodsk asdfj qw3    wkjeb12348214 \n\t");
     return 0;
 }
 

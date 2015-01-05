@@ -18,7 +18,7 @@ std::string Base64::encode(const std::vector<byte> &bytes)
 {
     int i, j, len = bytes.size();
     std::string str;
-    for (i=0, j=0; i < len; i+=3, j+=4) {
+    for (i=0; i < len; i+=3) {
         byte b0 = bytes[i];
         byte b1 = (i+1 < len) ? bytes[i+1] : 0;
         byte b2 = (i+2 < len) ? bytes[i+2] : 0;
@@ -26,15 +26,16 @@ std::string Base64::encode(const std::vector<byte> &bytes)
         str.push_back(table[((b0&0x3)<<4)|(b1>>4)]);
         str.push_back(table[((b1&0xf)<<2)|(b2>>6)]);
         str.push_back(table[b2&0x3f]);
-        if (j % 76 == 72) {
-            str.push_back('\n');
-        }
     }
     if (len % 3 == 1) {
         str[str.length()-2] = '=';
         str[str.length()-1] = '=';
     } else if (len % 3 == 2) {
         str[str.length()-1] = '=';
+    }
+    int slen = str.length();
+    for (i=line_width, j=0; i < slen; i+=line_width, j++) {
+        str.insert(i+j, "\n");
     }
     return str;
 }
@@ -44,9 +45,6 @@ std::vector<byte> Base64::decode(const std::string &str)
     int i = 0, len = str.length();
     std::vector<byte> result;
     for (i = 0; i < len; i += 4) {
-        if (str[i] == '\n') {
-            i++;
-        }
         byte c0 = rtable[(byte) str[i]];
         byte c1 = rtable[(byte) str[i+1]];
         byte c2 = rtable[(byte) str[i+2]];
@@ -57,6 +55,9 @@ std::vector<byte> Base64::decode(const std::string &str)
         result.push_back(b0);
         result.push_back(b1);
         result.push_back(b2);
+        if (i+4 < len && bytes[i+4] == '\n') {
+            i++;
+        }
     }
     if (str[str.length()-1] == '=') {
         result.pop_back();

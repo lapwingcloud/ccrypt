@@ -15,6 +15,7 @@ public:
     static int init_rtable();
 private:
     static int trick;
+    static const int line_width = 76;
     static const char *table;
     static byte rtable[128];
 };
