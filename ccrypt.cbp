@@ -31,12 +31,13 @@
 			</Target>
 		</Build>
 		<Compiler>
-			<Add option="-std=c++11" />
 			<Add option="-Wall" />
 		</Compiler>
-		<Unit filename="include/XorInteger.h" />
-		<Unit filename="src/XorInteger.cpp" />
-		<Unit filename="src/main.cpp" />
+		<Unit filename="include/AES.h" />
+		<Unit filename="include/Base64.h" />
+		<Unit filename="main.cpp" />
+		<Unit filename="src/AES.cpp" />
+		<Unit filename="src/Base64.cpp" />
 		<Extensions>
 			<code_completion />
 			<debugger />
