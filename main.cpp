@@ -9,10 +9,19 @@ using namespace std;
 void test();
 void test2();
 
+byte key[] = {
+    0x6E, 0xFA, 0x23, 0x30,
+    0x3B, 0xDE, 0x90, 0x79,
+    0x55, 0x80, 0xD0, 0xA1,
+    0x5D, 0x01, 0xD0, 0x9A
+};
+AES aes(key);
+
 int main()
 {
-    test();
-    test2();
+    //test();
+    //test2();
+    aes.decrypt(key, 16);
     return 0;
 }
 
@@ -25,7 +34,7 @@ string read_file_str(ifstream &fin)
     result.erase(result.end()-1);
     return result;
 }
-
+/*
 void test()
 {
     ifstream fin("testin.txt");
@@ -53,3 +62,4 @@ void test2()
     }
     cout << endl;
 }
+*/

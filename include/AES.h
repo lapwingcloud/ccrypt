@@ -5,40 +5,46 @@
 #include <cstring>
 #include <algorithm>
 #include <vector>
+#include <stdexcept>
 #include "Base64.h"
 
 typedef unsigned char byte;
 
-byte mul(byte a, byte b);
-
 class AES {
 public:
-    static const int block_size = 16; // bytes
+    static const int ENCRYPTION = 0;
+    static const int DECRYPTION = 1;
 
-    AES();
-    virtual ~AES();
-    static std::string encrypt(const std::string &text);
-    static void encrypt(byte *text);
-    static std::string decrypt(const std::string &text);
-    static void decrypt(byte *text);
-    static int init_ekey();
+    AES(const byte* key);
+    std::string encrypt(const std::string& text);
+    std::vector<byte> encrypt(const std::vector<byte>& bytes);
+    std::vector<byte> encrypt(const byte* bytes, int len);
+    std::string decrypt(const std::string& text);
+    std::vector<byte> decrypt(const std::vector<byte>& bytes);
+    std::vector<byte> decrypt(const byte* bytes, int len);
 
 private:
-    static const byte sbox[256];
-    static const byte sbox_inv[256];
-    static const byte coef[4];
-    static const byte coef_inv[4];
-    static const byte rc[11];
-    static byte key[block_size];
-    static byte ekey[11 * block_size];
-    static int trick;
+    static const int BLOCK_SIZE = 16; // bytes
+    static const int ROUNDS = 11;
+    static const byte SBOX[256];
+    static const byte SBOX_INV[256];
+    static const byte COEF[4];
+    static const byte COEF_INV[4];
+    static const byte RC[11];
 
-    static void add_round_key(byte *block, byte *key);
-    static void transpose(byte *block);
-    static void sub_bytes(byte *block, bool decrypt);
-    static void shift_rows(byte *block, bool decrypt);
-    static void mix_columns(byte *block, bool decrypt);
-    static void expansion(byte *key, byte *ekey);
+    static void add_round_key(byte* block, const byte* key);
+    static void sub_bytes(byte* block, int direction);
+    static void shift_rows(byte* block, int direction);
+    static void mix_columns(byte* block, int direction);
+    static void expansion(const byte* key, byte* ekey);
+
+    byte ekey[ROUNDS * BLOCK_SIZE];
+
+    void encrypt_block(byte* text);
+    void decrypt_block(byte* text);
 };
+
+void transpose(byte *block);
+byte mul(byte a, byte b);
 
 #endif // AES_H

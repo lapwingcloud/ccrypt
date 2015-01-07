@@ -1,6 +1,6 @@
 #include "AES.h"
 
-const byte AES::sbox[256] = {
+const byte AES::SBOX[256] = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
     0xB7, 0xFD, 0x93, 0x26, 0x36, 0x3F, 0xF7, 0xCC, 0x34, 0xA5, 0xE5, 0xF1, 0x71, 0xD8, 0x31, 0x15,
@@ -19,7 +19,7 @@ const byte AES::sbox[256] = {
     0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16
 };
 
-const byte AES::sbox_inv[256] = {
+const byte AES::SBOX_INV[256] = {
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
     0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
     0x54, 0x7B, 0x94, 0x32, 0xA6, 0xC2, 0x23, 0x3D, 0xEE, 0x4C, 0x95, 0x0B, 0x42, 0xFA, 0xC3, 0x4E,
@@ -38,163 +38,191 @@ const byte AES::sbox_inv[256] = {
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D
 };
 
-const byte AES::coef[4] = {0x02, 0x03, 0x01, 0x01};
-const byte AES::coef_inv[4] = {0x0E, 0x0B, 0x0D, 0x09};
-const byte AES::rc[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
+const byte AES::COEF[4] = {0x02, 0x03, 0x01, 0x01};
+const byte AES::COEF_INV[4] = {0x0E, 0x0B, 0x0D, 0x09};
+const byte AES::RC[ROUNDS] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36};
 
-byte AES::key[block_size] = {
-    0x2B, 0x7E, 0x15, 0x16,
-    0x28, 0xAE, 0xD2, 0xA6,
-    0xAB, 0xF7, 0x15, 0x88,
-    0x09, 0xCF, 0x4F, 0x3C
-};
-byte AES::ekey[11 * block_size];
-int AES::trick = AES::init_ekey();
 
-AES::AES()
+AES::AES(const byte* key)
 {
-    //ctor
-}
-
-AES::~AES()
-{
-    //dtor
-}
-
-std::string AES::encrypt(const std::string &text)
-{
-    int len = text.length();
-    int explen = text.length();
-    while (explen % block_size) {
-        explen++;
+    // AES::ekey = expansion(key);
+    expansion(key, ekey);
+    for (int i = 0; i < ROUNDS; i++) {
+        transpose(ekey + i*BLOCK_SIZE);
     }
-    byte *bytes = new byte[explen];
-    memcpy(bytes, text.c_str(), len);
-    memset(bytes+len, 0, explen-len);
-	for (int i = 0; i < explen; i += block_size) {
-		encrypt(&bytes[i]);
-	}
-	std::vector<byte> bs(bytes, bytes+explen);
-	delete[] bytes;
-	return Base64::encode(bs);
 }
 
-void AES::encrypt(byte *text)
+std::string AES::encrypt(const std::string& text)
+{
+	return Base64::encode(encrypt((const byte*) text.data(), text.size()));
+}
+
+std::vector<byte> AES::encrypt(const std::vector<byte>& bytes)
+{
+    return encrypt(bytes.data(), bytes.size());
+}
+
+std::vector<byte> AES::encrypt(const byte* bytes, int len)
+{
+    // expand input bytes to n*BLOCK_SIZE
+    int diff = BLOCK_SIZE - len%BLOCK_SIZE;
+    int explen = len + diff;
+    byte expbytes[explen];
+    memcpy(expbytes, bytes, len);
+    // PKCS7 padding
+    memset(expbytes+len, diff, diff);
+    // encrypt each block in order
+    for (int i = 0; i < explen; i += BLOCK_SIZE) {
+        encrypt_block(expbytes + i);
+    }
+    return std::vector<byte>(expbytes, expbytes+explen);
+}
+
+std::string AES::decrypt(const std::string& text)
+{
+    std::vector<byte> bytes = Base64::decode(text);
+    std::vector<byte> strbytes = decrypt(bytes.data(), bytes.size());
+    return std::string(strbytes.begin(), strbytes.end());
+}
+
+std::vector<byte> AES::decrypt(const std::vector<byte>& bytes)
+{
+    return decrypt(bytes.data(), bytes.size());
+}
+
+std::vector<byte> AES::decrypt(const byte* bytes, int len)
+{
+    if (len%BLOCK_SIZE != 0) {
+        throw std::invalid_argument("Input length not multiple of 16 bytes");
+    }
+    byte cpbytes[len];
+    memcpy(cpbytes, bytes, len);
+    // decrypt each block in order
+    for (int i = 0; i < len; i += BLOCK_SIZE) {
+        decrypt_block(cpbytes + i);
+    }
+    // remove PKCS7 padding
+    int diff = cpbytes[len-1];
+    return std::vector<byte>(cpbytes, cpbytes+len-diff);
+}
+
+void AES::encrypt_block(byte* text)
 {
     transpose(text);
     add_round_key(text, ekey);
-    for (int i = 1; i < 11; i++) {
-        sub_bytes(text, false);
-        shift_rows(text, false);
-        if (i != 10) {
-            mix_columns(text, false);
+    for (int i = 1; i < ROUNDS; i++) {
+        sub_bytes(text, ENCRYPTION);
+        shift_rows(text, ENCRYPTION);
+        if (i < (ROUNDS-1)) {
+            mix_columns(text, ENCRYPTION);
         }
-        add_round_key(text, &ekey[i * block_size]);
+        add_round_key(text, ekey + i*BLOCK_SIZE);
     }
     transpose(text);
 }
 
-std::string AES::decrypt(const std::string &text)
-{
-    std::vector<byte> bs = Base64::decode(text);
-    int len = bs.size();
-    int safelen = len;
-    while (safelen % block_size) {
-        safelen++;
-    }
-    byte *bytes = new byte[safelen];
-    memcpy(bytes, &bs[0], len);
-    memset(bytes+len, 0, safelen-len);
-	for (int i = 0; i < len; i += block_size) {
-		decrypt(&bytes[i]);
-	}
-	int pos;
-	for (pos = len; pos > 0; pos--) {
-        if (bytes[pos-1] != 0) {
-            break;
-        }
-	}
-	std::string s(bytes, bytes+pos);
-	delete[] bytes;
-	return s;
-}
-
-void AES::decrypt(byte *text)
+void AES::decrypt_block(byte* text)
 {
     transpose(text);
-    add_round_key(text, &ekey[10 * block_size]);
-    for (int i = 9; i >= 0; i--) {
-        shift_rows(text, true);
-        sub_bytes(text, true);
-        add_round_key(text, &ekey[i * block_size]);
-        if (i != 0) {
-            mix_columns(text, true);
+    add_round_key(text, ekey + (ROUNDS-1)*BLOCK_SIZE);
+    for (int i = ROUNDS-2; i >= 0; i--) {
+        shift_rows(text, DECRYPTION);
+        sub_bytes(text, DECRYPTION);
+        add_round_key(text, ekey + i*BLOCK_SIZE);
+        if (i > 0) {
+            mix_columns(text, DECRYPTION);
         }
     }
     transpose(text);
 }
 
-int AES::init_ekey()
+void AES::add_round_key(byte *block, const byte* key)
 {
-    expansion(key, ekey);
-    for (int i = 0; i < 11; i++) {
-        transpose(&ekey[i * block_size]);
-    }
-    return 0;
-}
-
-void AES::add_round_key(byte *block, byte *key)
-{
-    for (int i = 0; i < block_size; i++) {
+    for (int i = 0; i < BLOCK_SIZE; i++) {
         block[i] ^= key[i];
     }
 }
 
-void AES::transpose(byte *block)
+void AES::sub_bytes(byte *block, int direction)
 {
-    for (int i = 0; i < 4; i++) {
-        for (int j = i+1; j < 4; j++) {
-            std::swap(block[4*i + j], block[4*j + i]);
-        }
-    }
-}
-
-void AES::sub_bytes(byte *block, bool decrypt)
-{
-    const byte *mat = decrypt ? sbox_inv : sbox;
-    for (int i = 0; i < block_size; i++) {
+    const byte *mat = (direction == ENCRYPTION) ? SBOX : SBOX_INV;
+    for (int i = 0; i < BLOCK_SIZE; i++) {
         block[i] = mat[block[i]];
     }
 }
 
-void AES::shift_rows(byte *block, bool decrypt)
+void AES::shift_rows(byte *block, int direction)
 {
-    if (decrypt) {
-        for (int i = 0; i < 3; i++) {
-            std::swap(block[7-i], block[6-i]);
-            std::swap(block[12+i], block[13+i]);
-        }
-    } else {
+    if (direction == ENCRYPTION) {
         for (int i = 0; i < 3; i++) {
             std::swap(block[4+i], block[5+i]);
             std::swap(block[15-i], block[14-i]);
+        }
+    } else {
+        for (int i = 0; i < 3; i++) {
+            std::swap(block[7-i], block[6-i]);
+            std::swap(block[12+i], block[13+i]);
         }
     }
     std::swap(block[8], block[10]);
     std::swap(block[9], block[11]);
 }
 
-void AES::mix_columns(byte *block, bool decrypt)
+void AES::mix_columns(byte *block, int direction)
 {
-    byte tmp[block_size];
-    const byte *coef_arr = decrypt ? coef_inv : coef;
-    for (int i = 0; i < block_size; i++) {
+    byte tmp[BLOCK_SIZE];
+    const byte* coef = (direction == ENCRYPTION) ? COEF : COEF_INV;
+    for (int i = 0; i < BLOCK_SIZE; i++) {
         tmp[i] = block[i];
     }
-    for (int i = 0; i < block_size; i++) {
+    for (int i = 0; i < BLOCK_SIZE; i++) {
         block[i] = 0;
         for (int j = 0; j < 4; j++) {
-            block[i] ^= mul(coef_arr[j], tmp[(i+4*j) % 16]);
+            block[i] ^= mul(coef[j], tmp[(i+4*j) % 16]);
+        }
+    }
+}
+
+void AES::expansion(const byte* key, byte *ekey)
+{
+    // copy the first block
+    for (int i = 0; i < BLOCK_SIZE; i++) {
+        ekey[i] = key[i];
+    }
+    // expand 1 block to 11 blocks
+    byte gword[4];
+    for (int i = 1; i < 11; i++) {
+        for (int j = 0; j < BLOCK_SIZE; j++) {
+            int curr_word = i*BLOCK_SIZE + j;
+            int last_word = curr_word - 4;
+            int last_block = curr_word - BLOCK_SIZE;
+            if (j == 0) {
+                for (int k = 0; k < 4; k++) {
+                    gword[k] = ekey[curr_word - 4 + k];
+                }
+                // one-byte left circular rotation
+                for (int k = 0; k < 3; k++) {
+                    std::swap(gword[k], gword[k+1]);
+                }
+                for (int k = 0; k < 4; k++) {
+                    gword[k] = SBOX[gword[k]];
+                }
+                gword[0] ^= RC[i];
+            }
+            if (j < 4) {
+                ekey[curr_word] = ekey[last_block] ^ gword[j];
+            } else {
+                ekey[curr_word] = ekey[last_word] ^ ekey[last_block];
+            }
+        }
+    }
+}
+
+void transpose(byte *block)
+{
+    for (int i = 0; i < 4; i++) {
+        for (int j = i+1; j < 4; j++) {
+            std::swap(block[4*i + j], block[4*j + i]);
         }
     }
 }
@@ -215,39 +243,4 @@ byte mul(byte a, byte b)
         }
     }
     return result;
-}
-
-void AES::expansion(byte *key, byte *ekey)
-{
-    // copy the first block
-    for (int i = 0; i < block_size; i++) {
-        ekey[i] = key[i];
-    }
-    // expand 1 block to 11 blocks
-    byte gword[4];
-    for (int i = 1; i < 11; i++) {
-        for (int j = 0; j < block_size; j++) {
-            int curr_word = i*block_size + j;
-            int last_word = curr_word - 4;
-            int last_block = curr_word - block_size;
-            if (j == 0) {
-                for (int k = 0; k < 4; k++) {
-                    gword[k] = ekey[curr_word - 4 + k];
-                }
-                // one-byte left circular rotation
-                for (int k = 0; k < 3; k++) {
-                    std::swap(gword[k], gword[k+1]);
-                }
-                for (int k = 0; k < 4; k++) {
-                    gword[k] = sbox[gword[k]];
-                }
-                gword[0] ^= rc[i];
-            }
-            if (j < 4) {
-                ekey[curr_word] = ekey[last_block] ^ gword[j];
-            } else {
-                ekey[curr_word] = ekey[last_word] ^ ekey[last_block];
-            }
-        }
-    }
 }

@@ -59,9 +59,19 @@ std::vector<byte> Base64::decode(const std::string &str)
             i++;
         }
     }
-    if (str[str.length()-1] == '=') {
+    int count = 0;
+    for (int i = len-1; i >= 0; i--) {
+        if (str[i] == '\n') {
+            continue;
+        } else if (str[i] == '=') {
+            count++;
+        } else {
+            break;
+        }
+    }
+    if (count > 0) {
         result.pop_back();
-        if (str[str.length()-2] == '=') {
+        if (count > 1) {
             result.pop_back();
         }
     }
