@@ -1,8 +1,12 @@
 # ccrypt
 
 C++的AES-128和Base64库，AES目前只实现了ECB和PKCS7 padding
+
 为了速度考虑，AES依赖于openmp，暂时没有不依赖的版本。
+
 如果需要去掉依赖，去掉源码AES.cpp中的两个`#pragma`然后修改makefile即可
+
+Base64实现的时候为了显示的好看，每76个字符后会加一个`'\n'`，最后一行（即使刚好76个字符）不加
 
 # 编译
 
@@ -13,7 +17,7 @@ make
 
 # 使用示例
 
-```
+```cpp
 #include <string>
 #include "ccrypt.h"
 using namespace std;
@@ -70,26 +74,32 @@ Test passed
 
 ## AES
 
-```
+```cpp
 /* 初始化一个密钥为key的AES对象，key一定要是16bytes的 */
 AES(const byte* key);
+
 /* 对bytes进行AES-128加密及PKCS7 padding */
 vector<byte> encrypt(const byte* bytes, int len);
+
 /* 跟上面函数一样 */
 vector<byte> encrypt(const vector<byte>& bytes);
+
 /* 先把text视为bytestring，加密后再用Base64编码 */
 string encrypt(const string& text);
+
 /* 对bytes进行AES-128解密及去除PKCS7 padding，len一定要是16的倍数 */
 vector<byte> decrypt(const byte* bytes, int len);
+
 /* 跟上面函数一样 */
 vector<byte> decrypt(const vector<byte>& bytes);
+
 /* 先用Base64解码，然后跟上面一样 */
 string decrypt(const string& text);
 ```
 
 ## Base64
 
-```
+```cpp
 static string encode(const vector<byte> &bytes);
 static vector<byte> decode(const string &str);
 ```
