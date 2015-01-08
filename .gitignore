@@ -4,3 +4,4 @@ test*
 ccrypt.depend
 ccrypt.layout
 ccrypt.cbp
+*.o

@@ -6,7 +6,10 @@
 #include <algorithm>
 #include <vector>
 #include <stdexcept>
+#include <omp.h>
 #include "Base64.h"
+
+namespace ccrypt {
 
 typedef unsigned char byte;
 
@@ -46,5 +49,7 @@ private:
 
 void transpose(byte *block);
 byte mul(byte a, byte b);
+
+} // namespace ccrypt
 
 #endif // AES_H

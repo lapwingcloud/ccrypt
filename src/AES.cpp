@@ -1,5 +1,7 @@
 #include "AES.h"
 
+using namespace ccrypt;
+
 const byte AES::SBOX[256] = {
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -72,6 +74,7 @@ std::vector<byte> AES::encrypt(const byte* bytes, int len)
     // PKCS7 padding
     memset(expbytes+len, diff, diff);
     // encrypt each block in order
+    #pragma omp parallel for
     for (int i = 0; i < explen; i += BLOCK_SIZE) {
         encrypt_block(expbytes + i);
     }
@@ -98,6 +101,7 @@ std::vector<byte> AES::decrypt(const byte* bytes, int len)
     byte cpbytes[len];
     memcpy(cpbytes, bytes, len);
     // decrypt each block in order
+    #pragma omp parallel for
     for (int i = 0; i < len; i += BLOCK_SIZE) {
         decrypt_block(cpbytes + i);
     }
@@ -218,7 +222,7 @@ void AES::expansion(const byte* key, byte *ekey)
     }
 }
 
-void transpose(byte *block)
+void ccrypt::transpose(byte *block)
 {
     for (int i = 0; i < 4; i++) {
         for (int j = i+1; j < 4; j++) {
@@ -227,7 +231,7 @@ void transpose(byte *block)
     }
 }
 
-byte mul(byte a, byte b)
+byte ccrypt::mul(byte a, byte b)
 {
     unsigned short result = 0;
     for (int i = 0; i < 8; i++) {

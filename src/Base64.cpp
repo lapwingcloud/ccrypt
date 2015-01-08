@@ -1,18 +1,10 @@
 #include "Base64.h"
 
+using namespace ccrypt;
+
 const char *Base64::table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-byte Base64::rtable[128];
+byte Base64::rtable[123];
 int trick = Base64::init_rtable();
-
-Base64::Base64()
-{
-    //ctor
-}
-
-Base64::~Base64()
-{
-    //dtor
-}
 
 std::string Base64::encode(const std::vector<byte> &bytes)
 {
@@ -49,30 +41,21 @@ std::vector<byte> Base64::decode(const std::string &str)
         byte c1 = rtable[(byte) str[i+1]];
         byte c2 = rtable[(byte) str[i+2]];
         byte c3 = rtable[(byte) str[i+3]];
-        byte b0 = (c0<<2)|((c1>>4)&0x3);
-        byte b1 = (c1<<4)|((c2>>2)&0xf);
-        byte b2 = (c2<<6)|(c3&0x3f);
-        result.push_back(b0);
-        result.push_back(b1);
-        result.push_back(b2);
+        result.push_back((c0<<2)|((c1>>4)&0x3));
+        result.push_back((c1<<4)|((c2>>2)&0xf));
+        result.push_back((c2<<6)|(c3&0x3f));
         if (i+4 < len && str[i+4] == '\n') {
             i++;
         }
     }
-    int count = 0;
-    for (int i = len-1; i >= 0; i--) {
+    for (int i=len-1, count=0; i>=0 && count<2; i--) {
         if (str[i] == '\n') {
             continue;
         } else if (str[i] == '=') {
+            result.pop_back();
             count++;
         } else {
             break;
-        }
-    }
-    if (count > 0) {
-        result.pop_back();
-        if (count > 1) {
-            result.pop_back();
         }
     }
     return result;
