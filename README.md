@@ -4,7 +4,7 @@ C++的AES-128和Base64库，AES目前只实现了ECB和PKCS7 padding
 
 为了速度考虑，AES依赖于openmp，暂时没有不依赖的版本。
 
-如果需要去掉依赖，去掉源码AES.cpp中的两个`#pragma`然后修改makefile即可
+如果需要去掉依赖，去掉Makefile中的-fopenmp和-lgomp选项即可
 
 Base64实现的时候为了显示的好看，每76个字符后会加一个`'\n'`，最后一行（即使刚好76个字符）不加
 
