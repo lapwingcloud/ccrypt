@@ -83,8 +83,7 @@ std::vector<byte> AES::encrypt(const byte* bytes, int len)
 
 std::string AES::decrypt(const std::string& text)
 {
-    std::vector<byte> bytes = Base64::decode(text);
-    std::vector<byte> strbytes = decrypt(bytes.data(), bytes.size());
+    std::vector<byte> strbytes = decrypt(Base64::decode(text));
     return std::string(strbytes.begin(), strbytes.end());
 }
 
@@ -95,18 +94,17 @@ std::vector<byte> AES::decrypt(const std::vector<byte>& bytes)
 
 std::vector<byte> AES::decrypt(const byte* bytes, int len)
 {
-    if (len%BLOCK_SIZE != 0) {
-        throw std::invalid_argument("Input length not multiple of 16 bytes");
-    }
-    byte cpbytes[len];
+    int safelen = len;
+    while (safelen % BLOCK_SIZE) safelen++;
+    byte cpbytes[safelen];
     memcpy(cpbytes, bytes, len);
     // decrypt each block in order
     #pragma omp parallel for
-    for (int i = 0; i < len; i += BLOCK_SIZE) {
+    for (int i = 0; i < safelen; i += BLOCK_SIZE) {
         decrypt_block(cpbytes + i);
     }
     // remove PKCS7 padding
-    int diff = cpbytes[len-1];
+    int diff = (cpbytes[len-1] <= BLOCK_SIZE) ? cpbytes[len-1] : 0;
     return std::vector<byte>(cpbytes, cpbytes+len-diff);
 }
 
